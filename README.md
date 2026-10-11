@@ -4,6 +4,8 @@ Aplicación portátil para Windows 10/11 de 64 bits que limpia la caché del cli
 
 Código abierto bajo [licencia MIT](LICENSE). La firma gratuita de SignPath Foundation está **en preparación, sin aprobación ni una versión firmada disponible**. Consulta [Code signing policy](CODE_SIGNING.md) y [Privacidad](PRIVACY.md).
 
+[Descargar la versión de prueba 0.3.3](https://github.com/viixoo14/ChilePrimeRepair/releases/tag/v0.3.3-preview). **Sin firma digital:** Windows puede bloquear el ejecutable. La descarga incluye hashes y el informe de pruebas.
+
 ## Uso
 
 1. Extrae el ZIP y abre **ChilePrimeRepair.exe**. El ejecutable incluye su entorno .NET: no necesitas instalar .NET ni ejecutarlo como administrador.
@@ -36,11 +38,11 @@ Antes de limpiar se comprueba que FiveM esté cerrado y que los archivos de cach
 
 La versión 0.3.3 prepara el proyecto para publicarlo como código abierto y solicitar firma a SignPath Foundation. Incorpora un aviso de cambios antes de modificar archivos, pruebas de cancelación durante ese aviso, licencias de los componentes redistribuidos y workflows de GitHub Actions. La bienvenida conserva el logo y el botón Comenzar.
 
-La compilación local puede verificarse, pero la ejecución de los binarios de prueba está pendiente porque el Control de aplicaciones de Windows bloqueó los ejecutables sin firma. Preparar GitHub Actions no significa que sus pruebas ya hayan pasado: los resultados de la versión actual deben comprobarse en una ejecución del workflow después de publicar el repositorio. No se ha cambiado la protección de Windows ni se ha probado contra archivos reales de jugadores.
+La [compilación de GitHub Actions](https://github.com/viixoo14/ChilePrimeRepair/actions/runs/38101544514) finalizó correctamente: **42 pruebas del núcleo aprobadas, cero fallos**, y prueba del asistente aprobada. Corresponde al commit `097d818e03c92ad290f12daf0cd7432c74fb595b`, con el SDK .NET 10.0.401 y un runner Windows alojado por GitHub. La descarga portátil conserva el artefacto original de esa ejecución. No se ha cambiado la protección de Windows ni se han modificado archivos reales de jugadores.
 
-Conserva la detección automática ampliada, las fuentes Montserrat TrueType incorporadas y el marco oscuro de la versión 0.3.2. La nitidez en distintos monitores, los controles de ventana, la detección en instalaciones reales y el aviso previo deben verificarse antes de una versión de producción.
+Las pruebas del asistente verificaron Montserrat incorporada, bienvenida, controles de ventana, progreso, reparación, restauración, reintento y cancelación. El aviso aparece antes de escribir y cerrar durante el aviso conserva los archivos. La detección utiliza instalaciones ficticias; la nitidez en distintos monitores y la detección en instalaciones reales deben verificarse con jugadores antes de una versión de producción.
 
-Versión de preparación para pruebas con jugadores. El binario todavía no tiene firma digital. Las pruebas incluidas cubren limpieza y restauración con instalaciones simuladas; su ejecución para la versión 0.3.3 sigue pendiente. La mejora de FPS, las interfaces y las colisiones del mapa deben validarse dentro de Chile Prime con casos reales, incluyendo escalas de 100%, 125%, 150% y 200%, resoluciones normales y pantallas ultrawide.
+Versión de preparación para pruebas con jugadores. El binario todavía no tiene firma digital. Las pruebas aprobadas cubren limpieza y restauración con instalaciones simuladas. La mejora de FPS, las interfaces y las colisiones del mapa deben validarse dentro de Chile Prime con casos reales, incluyendo escalas de 100%, 125%, 150% y 200%, resoluciones normales y pantallas ultrawide.
 
 La caché de estas carpetas puede contener recursos de otros servidores FiveM: la limpieza actúa sobre la caché del cliente, no identifica exclusivamente archivos de Chile Prime.
 

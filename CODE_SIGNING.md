@@ -6,11 +6,11 @@ El proyecto solicita firma gratuita para software de código abierto a [SignPath
 
 ## Responsables
 
-- Autor y mantenedor: Valentino Bluscel, responsable de Chile Prime Repair.
-- Revisión de contribuciones: Valentino Bluscel. Los cambios de colaboradores se revisan antes de integrarse.
-- Aprobación de versiones para firma: Valentino Bluscel. Cada solicitud de producción requiere aprobación manual en SignPath.
+- Autor y mantenedor: Valentino Bluscel ([viixoo14 en GitHub](https://github.com/viixoo14)), responsable de Chile Prime Repair.
+- Revisión de contribuciones: Valentino Bluscel ([viixoo14](https://github.com/viixoo14)). Los cambios de colaboradores se revisan antes de integrarse.
+- Aprobación de versiones para firma: Valentino Bluscel ([viixoo14](https://github.com/viixoo14)). Cada solicitud de producción requiere aprobación manual en SignPath.
 
-Los miembros con acceso al repositorio o al servicio de firma deben utilizar autenticación multifactor. Vincular los perfiles y permisos de GitHub a estos roles forma parte de la configuración pendiente; este documento no certifica que ese paso ya se haya realizado.
+Los miembros con acceso al repositorio o al servicio de firma deben utilizar autenticación multifactor. Configurar y comprobar los permisos del servicio de firma forma parte del trabajo pendiente; este documento no certifica que ese paso ya se haya realizado.
 
 ## Qué se firma
 
