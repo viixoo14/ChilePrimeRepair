@@ -53,7 +53,7 @@ El aviso previo enumera los cambios seleccionados. La configuración se vuelve a
 
 ## Estado de esta versión
 
-Versión de prueba 0.4.0, sin firma digital. Sus pruebas deben comprobarse en GitHub Actions antes de publicar una nueva descarga. La mejora de FPS, interfaces y colisiones debe validarse dentro de Chile Prime; las pruebas de desarrollo utilizan instalaciones ficticias y no demuestran resultados en partidas reales.
+Versión de prueba 0.4.0, sin firma digital. La [ejecución de GitHub Actions](https://github.com/viixoo14/ChilePrimeRepair/actions/runs/38104855352) aprobó **54 pruebas del núcleo, cero fallos**, y la prueba del asistente, usando Windows 2025 y SDK .NET 10.0.401. Corresponde al commit `dcbaef17f22e1200ad2b8412ca3ff29fcf827d82`; la descarga conserva el artefacto original de esa ejecución. La mejora de FPS, interfaces y colisiones debe validarse dentro de Chile Prime; las pruebas de desarrollo utilizan instalaciones ficticias y no demuestran resultados en partidas reales.
 
 Si varios jugadores caen en el mismo lugar, debe investigarse el recurso del mapa o sus colisiones. El corrector no modifica los recursos del servidor. La caché del cliente puede incluir recursos de otros servidores FiveM.
 
