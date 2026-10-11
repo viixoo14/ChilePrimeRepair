@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <AssemblyName>ChilePrimeRepair</AssemblyName>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <Authors>Chile Prime Repair</Authors>
+    <Company>Chile Prime</Company>
+    <Product>Chile Prime Repair</Product>
+    <Description>Reparación local de caché y tamaño de interfaces de FiveM</Description>
+  </PropertyGroup>
+  <ItemGroup><ProjectReference Include="../ChilePrimeRepair.Core/ChilePrimeRepair.Core.csproj" /></ItemGroup>
+  <ItemGroup>
+    <Resource Include="Assets/Fonts/Montserrat/*.ttf" />
+    <None Update="Assets/Fonts/Montserrat/OFL.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <None Update="Assets/Fonts/Montserrat/FONT-SOURCES.md" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>
