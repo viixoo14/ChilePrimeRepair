@@ -128,8 +128,15 @@
      </Border>
      <TextBlock x:Name="ResultTitle" Text="Reparación completada" Style="{StaticResource CenteredText}" FontSize="19" FontWeight="SemiBold"/>
      <TextBlock x:Name="ResultMessage" Text="Ya puedes abrir FiveM y volver a Chile Prime." Style="{StaticResource CenteredText}" Foreground="{StaticResource Muted}" FontSize="12" Margin="0,10,0,0"/>
+     <Expander x:Name="DiagnosisDetails" Header="Ver diagnóstico y recomendaciones" Visibility="Collapsed" Foreground="{StaticResource TextPrimary}" FontSize="11" Margin="0,16,0,0">
+      <StackPanel>
+       <TextBlock x:Name="DiagnosisText" TextWrapping="Wrap" Foreground="{StaticResource Muted}" FontSize="11" Margin="0,10,0,0"/>
+       <Button x:Name="CopyDiagnosisButton" Content="Copiar informe para soporte" Click="CopyDiagnosisClick" Background="Transparent" Foreground="{StaticResource Muted}" Padding="10,7" Margin="0,10,0,0"/>
+      </StackPanel>
+     </Expander>
+     <Button x:Name="GraphicsButton" Content="Abrir opciones de gráficos de Windows" Click="GraphicsClick" Visibility="Collapsed" Background="Transparent" Foreground="{StaticResource Muted}" FontSize="10" Padding="10,7" Margin="0,9,0,0"/>
      <Button x:Name="FinishButton" Content="Finalizar" Click="FinishClick" Style="{StaticResource PrimaryButton}" Width="206" Padding="20,13" FontSize="13" HorizontalAlignment="Center" Margin="0,25,0,0"/>
-     <Button x:Name="RestoreButton" Content="Deshacer el ajuste de interfaces" Click="RestoreClick" Visibility="Collapsed" Background="Transparent" BorderThickness="0" Foreground="{StaticResource Muted}" FontSize="10" FontWeight="Normal" Padding="10,7" HorizontalAlignment="Center" Margin="0,9,0,0" ToolTip="Recupera el ajuste NUI anterior. La caché se regenera al usar FiveM."/>
+     <Button x:Name="RestoreButton" Content="Deshacer los ajustes" Click="RestoreClick" Visibility="Collapsed" Background="Transparent" BorderThickness="0" Foreground="{StaticResource Muted}" FontSize="10" FontWeight="Normal" Padding="10,7" HorizontalAlignment="Center" Margin="0,9,0,0" ToolTip="Recupera las preferencias anteriores. La caché se regenera al usar FiveM."/>
     </StackPanel>
    </Grid>
   </Grid>

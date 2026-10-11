@@ -11,6 +11,10 @@ namespace ChilePrimeRepair.App;
 public partial class MainWindow : Window
 {
     private const string RepairNotice = "Se limpiará la caché de FiveM y se fijarán las interfaces a 1920 × 1080. La caché se volverá a descargar. Puedes cerrar para cancelar.";
+    private string currentNotice = RepairNotice;
+    private DiagnosticPlan? diagnostic;
+    private string? report;
+    private readonly bool fixtureMode;
     private readonly RepairService service;
     private readonly bool preview;
     private readonly Func<CancellationToken, string?> detectInstallation;
@@ -27,6 +31,7 @@ public partial class MainWindow : Window
         Func<bool>? gameRunningOverride = null)
     {
         this.preview = preview;
+        fixtureMode = serviceOverride is not null;
         gameRunning = gameRunningOverride ?? IsGameRunning;
         detectInstallation = detectInstallationOverride is null ? Installation.Detect : _ => detectInstallationOverride();
         service = serviceOverride ?? new RepairService(
@@ -99,6 +104,10 @@ public partial class MainWindow : Window
             try { preferredInstallation = Installation.FromPath(installation).AppDirectory; }
             catch { preferredInstallation = null; throw; }
             await WaitForGame(token);
+            SetProgress("Analizando tu equipo y los registros…", 0, true);
+            diagnostic = await Task.Run(() => ClientDiagnostics.Analyze(preferredInstallation!, service.ConfigPath,
+                fixtureMode ? DeviceSnapshot.Unknown : WindowsDeviceProbe.Read(preferredInstallation!), token), token);
+            currentNotice = diagnostic.Notice;
             await AnnounceRepairChanges(token);
             var currentGeneration = generation;
             var progress = new Progress<RepairProgress>(value =>
@@ -106,20 +115,23 @@ public partial class MainWindow : Window
                 if (busy && currentGeneration == generation) DisplayProgress(value);
             });
             var result = await Task.Run(
-                () => service.Repair(preferredInstallation!, new(true, true), token: token, stages: progress), token);
+                () => service.Repair(preferredInstallation!, new(true, true, diagnostic.Settings, diagnostic.ConfigHash, true), token: token, stages: progress), token);
             if (result.Success)
             {
                 SetProgress("Reparación completada", 100, false);
-                ShowOutcome(true, "Reparación completada", "Ya puedes abrir FiveM y volver a Chile Prime.");
+                ShowOutcome(true, "Reparación completada", diagnostic.Settings.Count == 0 ?
+                    "Caché e interfaces revisadas. Abre FiveM y prueba Chile Prime; consulta el diagnóstico si el problema persiste." :
+                    "Aplicamos ajustes según los errores encontrados. Reinicia FiveM, prueba Chile Prime y consulta las recomendaciones.");
             }
             else ShowOutcome(false, "No se pudo completar", result.Message);
+            ShowDiagnosis(result.Success ? result.Cache?.DeletedFiles ?? 0 : null);
         });
     }
 
     private async Task AnnounceRepairChanges(CancellationToken token)
     {
         SetProgress("Preparando la reparación…", 0, true);
-        ProgressHint.Text = RepairNotice;
+        ProgressHint.Text = currentNotice;
         ProgressHint.Visibility = Visibility.Visible;
         // Keep the notice visible before the first file mutation; closing still cancels.
         await Task.Delay(TimeSpan.FromSeconds(6), token);
@@ -149,6 +161,9 @@ public partial class MainWindow : Window
         WelcomeView.Visibility = OutcomeView.Visibility = Visibility.Collapsed;
         ProgressView.Visibility = Visibility.Visible;
         RestoreButton.Visibility = Visibility.Collapsed;
+        DiagnosisDetails.Visibility = GraphicsButton.Visibility = Visibility.Collapsed;
+        DiagnosisDetails.IsExpanded = false;
+        diagnostic = null; report = null;
         Progress.Value = 0;
         StartButton.IsEnabled = FinishButton.IsEnabled = RestoreButton.IsEnabled = false;
         try { await operation(cancellation.Token); }
@@ -223,8 +238,39 @@ public partial class MainWindow : Window
             await WaitForGame(token);
             await Task.Run(service.Restore, token);
             SetProgress("Ajuste anterior restaurado", 100, false);
-            ShowOutcome(true, "Ajuste anterior restaurado", "Recuperamos tu ajuste de interfaces. La caché se regenerará al usar FiveM.");
+            ShowOutcome(true, "Ajustes anteriores restaurados", "Recuperamos las preferencias que modificó el asistente. La caché se regenerará al usar FiveM.");
         });
+    }
+
+    private void ShowDiagnosis(int? deletedFiles)
+    {
+        if (diagnostic is null) return;
+        report = diagnostic.Report(deletedFiles);
+        DiagnosisText.Text = report;
+        DiagnosisDetails.Visibility = Visibility.Visible;
+        GraphicsButton.Visibility = diagnostic.ReviewGraphics ? Visibility.Visible : Visibility.Collapsed;
+        try
+        {
+            var path = Path.Combine(service.StateDirectory, "reports", DateTimeOffset.UtcNow.ToString("yyyyMMddTHHmmss") + "-" + Guid.NewGuid().ToString("N") + ".txt");
+            Safety.EnsureBelow(path, service.StateDirectory);
+            Safety.AtomicWrite(path, System.Text.Encoding.UTF8.GetBytes(report), null);
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        { DiagnosisText.Text += "\nNo se pudo guardar el informe. Puedes copiarlo desde esta pantalla."; }
+    }
+
+    private void CopyDiagnosisClick(object sender, RoutedEventArgs e)
+    {
+        if (report is null) return;
+        try { Clipboard.SetText(report); CopyDiagnosisButton.Content = "Informe copiado"; }
+        catch (System.Runtime.InteropServices.COMException) { CopyDiagnosisButton.Content = "No se pudo copiar; vuelve a intentar"; }
+    }
+    private void GraphicsClick(object sender, RoutedEventArgs e)
+    {
+        if (preview || fixtureMode) return;
+        try { Process.Start(new ProcessStartInfo("ms-settings:display-advancedgraphics") { UseShellExecute = true }); }
+        catch (Exception exception) when (exception is Win32Exception or InvalidOperationException)
+        { ResultMessage.Text = "Abre Configuración de Windows → Sistema → Pantalla → Gráficos y revisa la preferencia del juego."; }
     }
 
     private void OnClosing(object? sender, CancelEventArgs e)
@@ -277,6 +323,9 @@ public partial class MainWindow : Window
         if (File.Exists(cache) || !new Configuration(File.ReadAllBytes(config)).IsEnabled ||
             !succeeded || Progress.Value != 100 || RestoreButton.Visibility != Visibility.Visible)
             throw new InvalidOperationException("A single click did not apply both repairs and expose recovery.");
+        if (DiagnosisDetails.Visibility != Visibility.Visible || report is null || !report.Contains("diagnóstico", StringComparison.OrdinalIgnoreCase) ||
+            !report.Contains("inconcluso", StringComparison.OrdinalIgnoreCase) && !report.Contains("No hay registros"))
+            throw new InvalidOperationException("The result did not expose a truthful local diagnosis.");
         App.SavePreview(this, Path.Combine(output, "completed.png"));
         RestoreButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Button.ClickEvent));
         await WaitUntilIdle();
@@ -307,6 +356,32 @@ public partial class MainWindow : Window
         await WaitUntilIdle();
         if (!succeeded || File.Exists(cache) || !new Configuration(File.ReadAllBytes(config)).IsEnabled)
             throw new InvalidOperationException("The assistant did not resume automatically after the game closed.");
+    }
+
+    internal async Task SmokeTestAdvancedDiagnosis(string installation, string config, string cache, string output)
+    {
+        var logs = Path.Combine(installation, "logs"); Directory.CreateDirectory(logs);
+        var log = Path.Combine(logs, "CitizenFX_log_fixture.log");
+        File.AppendAllText(config, "seta str_maxVehicleTextureRes 4096\nseta vid_budgetScale 8\n");
+        File.WriteAllText(log, "ERROR: out of memory\nERROR: failed to download private-resource\n");
+        File.WriteAllText(cache, "fixture cache");
+        await StartRepair();
+        if (!succeeded || new Configuration(File.ReadAllBytes(config), "str_maxVehicleTextureRes").Value != "1024" ||
+            new Configuration(File.ReadAllBytes(config), "vid_budgetScale").Value != "8" ||
+            report is null || !report.Contains("fallos de descarga") || report.Contains("private-resource"))
+            throw new InvalidOperationException("Evidence-based memory repair or private report failed.");
+        DiagnosisDetails.IsExpanded = true;
+        App.SavePreview(this, Path.Combine(output, "diagnosis.png"), 1, 580, 950);
+        service.Restore();
+        File.WriteAllText(log, "[CEF] GPU process launch failed\n");
+        await StartRepair();
+        if (!succeeded || !new Configuration(File.ReadAllBytes(config), "nui_useInProcessGpu").IsEnabled ||
+            !currentNotice.Contains("reducir su fluidez"))
+            throw new InvalidOperationException("Conditional NUI compatibility trial failed.");
+        service.Restore();
+        if (new Configuration(File.ReadAllBytes(config), "nui_useInProcessGpu").IsEnabled ||
+            new Configuration(File.ReadAllBytes(config), "str_maxVehicleTextureRes").Value != "4096")
+            throw new InvalidOperationException("Advanced repair restoration failed.");
     }
 
     internal async Task SmokeTestMissing(string config, string cache, string output)

@@ -56,7 +56,9 @@ public partial class App : Application
                     await closeDuringWait.SmokeTestCloseWhileWaiting(config, cache);
                     var closeDuringNotice = new MainWindow(false, service, () => installation, () => false);
                     await closeDuringNotice.SmokeTestNoticeBeforeWrites(config, cache);
-                    File.WriteAllText(Path.Combine(output, "ui-smoke-result.txt"), "PASS: dark integrated window controls minimize, maximize, restore and request normal closure; closing during a game wait cancels and preserves files; the change notice appears before writes and closing during it preserves files; embedded Montserrat regular/medium/semibold/bold with matching font weights, minimal welcome, automatic discovery skipping a stale hint, one-click repair without a folder picker, duplicate-start protection, completed progress, restored setting, preserved preferences, waiting for an open game without writes, automatic resume, missing or invalid detection without writes, retry discovers a newly available client and completes both repairs, scrollable small window.\nNo real FiveM files were used.");
+                    var advanced = new MainWindow(false, service, () => installation, () => false);
+                    await advanced.SmokeTestAdvancedDiagnosis(installation, config, cache, output);
+                    File.WriteAllText(Path.Combine(output, "ui-smoke-result.txt"), "PASS: minimal welcome and progress; embedded Montserrat; dark window controls; automatic discovery; cancel and close before writes; game wait and resume; retry and small window scrolling; local diagnosis and private report; memory evidence restores vehicle texture limit to 1024 while preserving texture budget; conditional NUI GPU compatibility with advance notice; restoration of all modified preferences.\nNo real FiveM files were used.");
                     Shutdown();
                 }
                 catch (Exception exception)
