@@ -1,0 +1,72 @@
+name: Request SignPath signature
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  sign:
+    # Enable only after Foundation approval and configuration of manual production approval.
+    if: github.ref == 'refs/heads/main' && vars.SIGNPATH_ENABLED == 'true'
+    runs-on: windows-2025
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
+        with:
+          global-json-file: global.json
+      - name: Check signing configuration and derive version from source
+        id: version
+        shell: pwsh
+        env:
+          SIGNPATH_TOKEN: ${{ secrets.SIGNPATH_API_TOKEN }}
+          SIGNPATH_ORGANIZATION: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:SIGNPATH_TOKEN) -or
+              [string]::IsNullOrWhiteSpace($env:SIGNPATH_ORGANIZATION)) {
+            throw 'Configure SignPath after Foundation approval; do not place credentials in source.'
+          }
+          [xml]$properties = Get-Content -LiteralPath Directory.Build.props -Raw
+          $version = [string]$properties.Project.PropertyGroup.Version
+          if ($version -notmatch '^\d+\.\d+\.\d+$') { throw 'Unsupported release version.' }
+          "value=$version" >> $env:GITHUB_OUTPUT
+      - name: Test and build the public source
+        shell: pwsh
+        run: ./build.ps1
+      - name: Upload unsigned artifact with GitHub build provenance
+        id: unsigned
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: ChilePrimeRepair-signing-input
+          path: artifacts/unsigned/
+          if-no-files-found: error
+          retention-days: 30
+      - name: Submit request and wait for manual SignPath approval
+        uses: signpath/github-action-submit-signing-request@f6d04783b4569d051e0c80105fe66e82819d0092 # v3
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ChilePrimeRepair
+          signing-policy-slug: release
+          artifact-configuration-slug: portable-windows-x64
+          github-artifact-id: ${{ steps.unsigned.outputs.artifact-id }}
+          wait-for-completion: true
+          wait-for-completion-timeout-in-seconds: 1200
+          output-artifact-directory: artifacts/signed
+          parameters: |
+            version: "${{ steps.version.outputs.value }}"
+      - name: Verify signature, test the signed binary and refresh hashes
+        shell: pwsh
+        run: ./scripts/verify-signed-release.ps1 -Directory artifacts/signed
+      - name: Upload verified signed build
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: ChilePrimeRepair-signed
+          path: artifacts/signed/
+          if-no-files-found: error
+          retention-days: 30
