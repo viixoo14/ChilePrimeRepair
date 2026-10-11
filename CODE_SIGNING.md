@@ -1,6 +1,6 @@
 # Code signing policy
 
-**Estado: preparación de una solicitud a SignPath Foundation. No hay aprobación ni una versión firmada todavía.**
+**Estado: solicitud enviada a SignPath Foundation y recepción confirmada. Pendiente de evaluación; no hay aprobación ni una versión firmada todavía.**
 
 El proyecto solicita firma gratuita para software de código abierto a [SignPath Foundation](https://signpath.org/terms.html). Publicar este archivo no implica que SignPath haya aceptado el proyecto o proporcione actualmente un certificado.
 

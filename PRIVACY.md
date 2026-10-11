@@ -6,7 +6,11 @@ El corrector funciona localmente. No incluye cuentas, anuncios, analítica, tele
 
 Para detectar FiveM, lee nombres y rutas de procesos, entradas de instalación y protocolo del registro de Windows, destinos de accesos directos y carpetas comunes de discos locales. No ejecuta esos accesos directos. Lee la configuración de NUI y la caché únicamente para las correcciones descritas en el README.
 
-Antes de cambiar el ajuste de interfaces, guarda una copia local de la configuración si ya existía y un manifiesto en `%LocalAppData%\ChilePrimeRepair\backups`. La configuración puede contener preferencias y teclas del jugador. Los respaldos quedan en su equipo y no se suben a ningún servicio.
+El diagnóstico también consulta RAM, adaptadores gráficos y su memoria, espacio libre, preferencias gráficas guardadas del juego, el canal de actualización y partes acotadas de registros recientes de FiveM. Estas lecturas son locales. No recopila identificadores de hardware ni inventarios de otras aplicaciones. La opción Gráficos de Windows abre la página del sistema; no modifica sus preferencias.
+
+Los informes de diagnóstico se guardan en `%LocalAppData%\ChilePrimeRepair\reports`. Incluyen modelos de adaptadores, cantidades de memoria, estado de la configuración, categorías de errores y recomendaciones. Excluyen los registros originales, direcciones de red, rutas del usuario e identificadores de hardware. Permanecen hasta que el usuario los elimine. Copiar el informe solo lo coloca en el portapapeles; el usuario decide si lo comparte con soporte.
+
+Antes de cambiar las preferencias seleccionadas, guarda una copia local de la configuración si ya existía y un manifiesto en `%LocalAppData%\ChilePrimeRepair\backups`. La configuración puede contener preferencias y teclas del jugador. Los respaldos quedan en su equipo y no se suben a ningún servicio.
 
 Las pruebas de desarrollo crean instalaciones ficticias y pueden guardar resultados y capturas del asistente en la carpeta indicada. No utilizan la instalación ni la configuración real de FiveM. Antes de compartir un archivo de diagnóstico creado por terceros, el usuario debe revisar su contenido.
 
