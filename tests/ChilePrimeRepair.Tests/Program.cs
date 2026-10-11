@@ -348,6 +348,116 @@ Test("A real Windows shortcut locates a custom client without changing the short
     Equal(f.App, Installation.DetectCandidates(WindowsInstallationDiscovery.ShortcutTargets([folder])));
     True(before.AsSpan().SequenceEqual(File.ReadAllBytes(shortcut))); True(f.CacheFiles.All(File.Exists));
 });
+Test("Diagnosis without logs stays inconclusive and does not guess settings", () =>
+{
+    var f = NewFixture(); var before = File.ReadAllBytes(f.Config);
+    var d = ClientDiagnostics.Analyze(f.App, f.Config, DeviceSnapshot.Unknown);
+    Equal(0, d.Settings.Count); Equal("production", d.Channel);
+    True(d.Report().Contains("No hay registros"));
+    True(before.AsSpan().SequenceEqual(File.ReadAllBytes(f.Config))); True(f.CacheFiles.All(File.Exists));
+});
+Test("Specific memory failure plus raised vehicle textures selects only the standard limit", () =>
+{
+    var f = NewFixture(); File.AppendAllText(f.Config, "seta str_maxVehicleTextureRes 4096\nseta vid_budgetScale 8\n");
+    var logs = Path.Combine(f.App, "logs"); Directory.CreateDirectory(logs);
+    File.WriteAllText(Path.Combine(logs, "CitizenFX_log_1.log"), "ERROR: out of memory while loading vehicle; http://private.example/secret-token; C:\\Users\\private\\\n");
+    var d = ClientDiagnostics.Analyze(f.App, f.Config, new(16UL << 30, 1UL << 30, 1L << 30, [new("GPU", 4UL << 30, 8UL << 30)], true));
+    Equal("1024", d.Settings["str_maxVehicleTextureRes"]); Equal(1, d.Settings.Count);
+    True(d.Report().Contains("Presupuesto extendido de texturas: 8"));
+    True(!d.Report().Contains("secret-token")); True(!d.Report().Contains("private.example")); True(!d.Report().Contains("C:\\Users"));
+    Equal("8", new Configuration(File.ReadAllBytes(f.Config), "vid_budgetScale").Value);
+});
+Test("CEF GPU failure selects compatibility; memory pressure prevents this trial", () =>
+{
+    var f = NewFixture(); var logs = Path.Combine(f.App, "logs"); Directory.CreateDirectory(logs);
+    var path = Path.Combine(logs, "CitizenFX_log_1.log");
+    File.WriteAllText(path, "[CEF] GPU process launch failed\n");
+    var d = ClientDiagnostics.Analyze(f.App, f.Config, DeviceSnapshot.Unknown);
+    Equal("true", d.Settings["nui_useInProcessGpu"]); True(d.Notice.Contains("reducir su fluidez"));
+    File.AppendAllText(path, "ERROR: out of memory\n");
+    Equal(0, ClientDiagnostics.Analyze(f.App, f.Config, DeviceSnapshot.Unknown).Settings.Count);
+});
+Test("Ordinary log words do not imply corruption or GPU failure", () =>
+{
+    var d = ClientDiagnostics.Classify(["resource memory loaded", "NUI initialized", "GPU process started [CEF]", "no errors: download failed", "collision assets ready"]);
+    True(!d.MemoryPressure && !d.NuiGpuFailure && !d.DownloadFailure && !d.CollisionFailure);
+    var error = ClientDiagnostics.Classify(["ERROR: failed to download resource", "ERROR loading map.ybn"]);
+    True(error.DownloadFailure && error.CollisionFailure);
+});
+Test("Old logs and errors outside the bounded tail do not select repairs", () =>
+{
+    var f = NewFixture(); var logs = Path.Combine(f.App, "logs"); Directory.CreateDirectory(logs);
+    var path = Path.Combine(logs, "CitizenFX_log_old.log");
+    File.WriteAllText(path, "[CEF] GPU process crashed\n"); File.SetLastWriteTimeUtc(path, DateTime.UtcNow.AddDays(-8));
+    File.WriteAllText(Path.Combine(logs, "CitizenFX_log_new.log"), "ERROR: out of memory\n" + new string('x', 300000) + "\nnormal\n");
+    var d = ClientDiagnostics.Analyze(f.App, f.Config, DeviceSnapshot.Unknown);
+    Equal(1, d.Logs.FilesRead); Equal(0, d.Settings.Count); True(!d.Logs.MemoryPressure && !d.Logs.NuiGpuFailure);
+});
+Test("Experimental channel and multiple adapters produce explicit recommendations", () =>
+{
+    var f = NewFixture(); File.AppendAllText(Path.Combine(f.App, "CitizenFX.ini"), "UpdateChannel=canary\n");
+    var d = ClientDiagnostics.Analyze(f.App, f.Config, new(null, null, null, [new("integrated", 0, 8UL << 30), new("dedicated", 8UL << 30, 8UL << 30)], true, 1));
+    Equal("canary", d.Channel); True(d.ReviewGraphics);
+    True(d.Recommendations.Any(r => r.Contains("Release/Production")));
+    True(d.Recommendations.Any(r => r.Contains("ahorro de energía")));
+    Equal(0, d.Settings.Count);
+});
+Test("Malformed advanced settings remain untouched and are reported", () =>
+{
+    var f = NewFixture(); File.AppendAllText(f.Config, "seta str_maxVehicleTextureRes\nseta vid_budgetScale \"8\n");
+    var before = File.ReadAllBytes(f.Config);
+    var d = ClientDiagnostics.Analyze(f.App, f.Config, DeviceSnapshot.Unknown);
+    True(d.Recommendations.Count(r => r.Contains("formato inesperado")) == 2);
+    True(before.AsSpan().SequenceEqual(File.ReadAllBytes(f.Config)));
+    Throws(() => new Configuration(Encoding.UTF8.GetBytes("seta nui_useFixedSize \"true\n")));
+    Throws(() => new Configuration(Encoding.UTF8.GetBytes("seta str_maxVehicleTextureRes 1024 extra\n"), "str_maxVehicleTextureRes"));
+});
+Test("Multiple setting restoration preserves later unrelated preferences and budget", () =>
+{
+    var f = NewFixture(); File.AppendAllText(f.Config, "seta str_maxVehicleTextureRes 4096\nseta vid_budgetScale 8\n");
+    var service = f.Service();
+    service.Repair(f.App, new(true, true, new Dictionary<string, string> { ["str_maxVehicleTextureRes"] = "1024", ["nui_useInProcessGpu"] = "true" }));
+    File.AppendAllText(f.Config, "bind keyboard F3 \"new preference\"\n");
+    service.Restore(); var after = File.ReadAllBytes(f.Config);
+    Equal("4096", new Configuration(after, "str_maxVehicleTextureRes").Value);
+    True(!new Configuration(after).IsEnabled && !new Configuration(after, "nui_useInProcessGpu").IsEnabled);
+    Equal("8", new Configuration(after, "vid_budgetScale").Value);
+    True(Encoding.UTF8.GetString(after).Contains("new preference"));
+});
+Test("Manual change to one repaired setting blocks all restoration", () =>
+{
+    var f = NewFixture(); File.AppendAllText(f.Config, "seta str_maxVehicleTextureRes 4096\n");
+    var service = f.Service(); service.Repair(f.App, new(false, true, new Dictionary<string, string> { ["str_maxVehicleTextureRes"] = "1024" }));
+    File.WriteAllBytes(f.Config, new Configuration(File.ReadAllBytes(f.Config), "str_maxVehicleTextureRes").SetValue("512"));
+    var before = File.ReadAllBytes(f.Config); Throws(() => service.Restore());
+    True(before.AsSpan().SequenceEqual(File.ReadAllBytes(f.Config)));
+});
+Test("Changed diagnosis and unauthorized settings block writes before cleaning", () =>
+{
+    var f = NewFixture(); var d = ClientDiagnostics.Analyze(f.App, f.Config, DeviceSnapshot.Unknown);
+    File.AppendAllText(f.Config, "// concurrent edit\n");
+    Throws(() => f.Service().Repair(f.App, new(true, true, d.Settings, d.ConfigHash, true)));
+    Throws(() => f.Service().Repair(f.App, new(true, true, new Dictionary<string, string> { ["vid_budgetScale"] = "10" })));
+    True(f.CacheFiles.All(File.Exists)); True(!Directory.Exists(f.State));
+});
+Test("Native Windows device probe reads fixture hardware without changing game files", () =>
+{
+    if (!OperatingSystem.IsWindows()) return;
+    var f = NewFixture(); var before = File.ReadAllBytes(f.Config);
+    var device = WindowsDeviceProbe.Read(f.App);
+    True(device.TotalRam > 0 && device.AvailableRam <= device.TotalRam);
+    True(device.FreeDisk >= 0);
+    True(before.AsSpan().SequenceEqual(File.ReadAllBytes(f.Config))); True(f.CacheFiles.All(File.Exists));
+});
+Test("Legacy version-one NUI backup remains restorable", () =>
+{
+    var f = NewFixture(); var before = File.ReadAllBytes(f.Config); var service = f.Service();
+    service.Repair(f.App, new(false, true));
+    var path = Directory.EnumerateFiles(Path.Combine(f.State, "backups"), "manifest.json", SearchOption.AllDirectories).Single();
+    var manifest = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(path))!.AsObject();
+    manifest["Format"] = 1; manifest.Remove("Settings"); File.WriteAllText(path, manifest.ToJsonString());
+    service.Restore(); True(before.AsSpan().SequenceEqual(File.ReadAllBytes(f.Config)));
+});
 Console.WriteLine($"\n{passed} passed; {failed} failed. Fixtures: {testRoot}");
 return failed == 0 ? 0 : 1;
 
